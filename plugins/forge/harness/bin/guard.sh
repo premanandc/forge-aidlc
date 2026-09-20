@@ -31,11 +31,28 @@ cd "$ROOT"
 MODE=${1:-}
 shift || true
 
+# Which ticket is in flight, derived rather than simply read. The branch decides *whether* you are
+# inside one: a ticket lives on ticket/<T>, so any other branch means you are not in a ticket,
+# whatever work/.current-ticket still says. That pointer is written by /forge:intent and
+# bin/accept.sh and nothing ever clears it, so it outlives the work it describes. Trusting it
+# alone meant the only way to do harness work was to move it aside, and moving it is exactly what
+# switched off the rule protecting .forge/. Stepping out of a ticket is now `git switch main`,
+# which is visible in git history and cannot happen by accident.
+#
+# On a ticket branch the file still decides *which* ticket, because the fleet's headless runs and
+# the selftests set it explicitly and may name a synthetic one. When the branch cannot be read at
+# all, which is how CI checks out (detached HEAD), the file is the only thing there is.
 TICKET=""
-[ -f work/.current-ticket ] && TICKET=$(tr -d '[:space:]' < work/.current-ticket)
-# A chain is in flight when a ticket is active (work/.current-ticket, set by /forge:intent and
-# bin/ticket.sh), a fleet role has announced itself (work/<T>/.role-<name>), or an artifact is
-# being drafted. The signal rules below exist to protect that chain, so they apply exactly then.
+BRANCH=$(git branch --show-current 2>/dev/null)
+read_pointer() { [ -f work/.current-ticket ] && tr -d '[:space:]' < work/.current-ticket; }
+case "$BRANCH" in
+  ticket/*) TICKET=$(read_pointer); [ -n "$TICKET" ] || TICKET=${BRANCH#ticket/};;
+  "")       TICKET=$(read_pointer);;
+  *)        TICKET="";;
+esac
+# A chain is in flight when a ticket is active (you are on its branch, as derived above), a fleet
+# role has announced itself (work/<T>/.role-<name>), or an artifact is being drafted. The signal
+# rules below exist to protect that chain, so they apply exactly then.
 # Outside one, a human maintaining the harness writes policy, catalog and fixture files that name
 # these markers; matching on the names alone blocked ordinary work, three times, before this.
 AGENT_SESSION=0

@@ -128,7 +128,7 @@ commit with someone else's name in an acceptance trailer, any more than git stop
 `user.name` to a colleague's. What you get is a record that is *checkable*, not one that is
 unforgeable by the person who owns the repository.
 
-**The rules are tested like code**, because they are code. `bin/guard-selftest.sh` runs 45 cases,
+**The rules are tested like code**, because they are code. `bin/guard-selftest.sh` runs 47 cases,
 `bin/chain-check-selftest.sh` builds 22 deliberately broken histories, and
 `bin/ticket-preconditions-selftest.sh` checks the autonomous half refuses to start early. Nearly
 every case is a bug that actually happened, including the permissive ones: a guard that blocks too

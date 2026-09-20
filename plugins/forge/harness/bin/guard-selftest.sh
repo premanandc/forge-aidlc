@@ -10,6 +10,24 @@
 #
 # Exit 0 when every case behaves; 1 otherwise. Compatible with bash 3.2.
 cd "$(git rev-parse --show-toplevel)" || exit 1
+
+# Several cases below assert what the guard does with no chain in flight, and bin/guard.sh derives
+# that from the branch: on ticket/<T> you are inside a ticket whatever work/.current-ticket says,
+# which is the point of deriving it. Run from a ticket branch those cases would assert the opposite
+# of the truth, and run from main they would pass, so the suite's answer would depend on where it
+# happened to be run. Re-run the whole thing in a detached worktree, where no branch claims a
+# ticket and the pointer file decides, as the cases expect. CI checks out detached already.
+case "$(git branch --show-current 2>/dev/null)" in
+  ticket/*)
+    [ -z "${FORGE_SELFTEST_DETACHED:-}" ] || { echo "guard-selftest: still on a ticket branch inside the worktree"; exit 1; }
+    SELF_WT=$(mktemp -d "${TMPDIR:-/tmp}/guardself.XXXXXX"); rmdir "$SELF_WT"
+    git worktree add -q --detach "$SELF_WT" HEAD || { echo "guard-selftest: could not create the worktree"; exit 1; }
+    cp -Rf bin/. "$SELF_WT/bin/"
+    mkdir -p "$SELF_WT/.forge"; cp -Rf .forge/. "$SELF_WT/.forge/"
+    ( cd "$SELF_WT" && FORGE_SELFTEST_DETACHED=1 bin/guard-selftest.sh ); SELF_RC=$?
+    git worktree remove --force "$SELF_WT" >/dev/null 2>&1; git worktree prune >/dev/null 2>&1
+    exit $SELF_RC;;
+esac
 PASSED=0; WRONG=0
 # The cases below set work/.current-ticket to steer the guard, and this script runs in a real
 # checkout. Put back whatever was there, or a selftest would quietly hijack the ticket someone is
@@ -175,6 +193,35 @@ cp -Rf bin/. "$STOP_PROBE/bin/" 2>/dev/null
 [ -f "$STOP_PROBE.fail" ] && WRONG=$((WRONG+3)) || PASSED=$((PASSED+3))
 rm -f "$STOP_PROBE.fail"
 git worktree remove --force "$STOP_PROBE" >/dev/null 2>&1; git worktree prune >/dev/null 2>&1
+echo "=== the branch decides whether you are inside a ticket, not the pointer file"
+# work/.current-ticket is written by /forge:intent and bin/accept.sh and nothing ever clears it,
+# so it outlives the work it describes. While the guard trusted it alone, the only way to do
+# harness work was to move it aside, and moving it is exactly what switched off the rule
+# protecting .forge/. These two cases are the derivation: a plain branch is outside a ticket
+# however stale the pointer, and a ticket branch is inside one with no pointer at all, so deleting
+# the file no longer disarms anything.
+BR_PROBE=$(mktemp -d "${TMPDIR:-/tmp}/guardbranch.XXXXXX"); rmdir "$BR_PROBE"
+BR_PLAIN="forge-selftest-plain-$$"; BR_TICKET="ticket/forge-selftest-$$"
+git worktree add -q -b "$BR_PLAIN" "$BR_PROBE" HEAD 2>/dev/null
+cp -Rf bin/. "$BR_PROBE/bin/" 2>/dev/null
+mkdir -p "$BR_PROBE/.forge"; cp -Rf .forge/. "$BR_PROBE/.forge/" 2>/dev/null
+(
+  cd "$BR_PROBE" || exit 0
+  mkdir -p work; echo PF-777 >work/.current-ticket   # the stale pointer every finished ticket leaves
+  bin/guard.sh --path .forge/policy.json >/dev/null; rc=$?
+  [ "$rc" -eq 0 ] && echo "guard-selftest: ok    (0) a plain branch is outside a ticket, stale pointer and all" \
+                  || echo "guard-selftest: WRONG a plain branch still counted as inside a ticket (rc=$rc)"
+  git switch -q -c "$BR_TICKET" 2>/dev/null
+  rm -f work/.current-ticket                         # deleting it used to be enough to disarm this
+  bin/guard.sh --path .forge/policy.json >/dev/null; rc=$?
+  [ "$rc" -eq 1 ] && echo "guard-selftest: ok    (1) a ticket branch is inside a ticket with no pointer at all" \
+                  || echo "guard-selftest: WRONG deleting the pointer on a ticket branch disarmed the rule (rc=$rc)"
+) | while IFS= read -r l; do echo "$l"; case "$l" in *WRONG*) echo "$l" >>"$BR_PROBE.fail";; esac; done
+[ -f "$BR_PROBE.fail" ] && WRONG=$((WRONG+2)) || PASSED=$((PASSED+2))
+rm -f "$BR_PROBE.fail"
+git worktree remove --force "$BR_PROBE" >/dev/null 2>&1; git worktree prune >/dev/null 2>&1
+git branch -D "$BR_PLAIN" "$BR_TICKET" >/dev/null 2>&1
+
 O=$(echo '{"tool_input":{"command":"ls"}}' | bin/hooks/pretooluse-bash.sh); RC=$?
 if [ -z "$O" ] && [ "$RC" -eq 0 ]; then echo "guard-selftest: ok    (0) adapter is silent on an unguarded command"; PASSED=$((PASSED+1))
 else echo "guard-selftest: WRONG adapter spoke on an unguarded command: $O"; WRONG=$((WRONG+1)); fi
