@@ -173,11 +173,18 @@ bin/metrics.sh append "$(jq -n --arg ticket "$TICKET" --arg started "$STAMP" --a
   --arg model "${MODEL_LIST:-unknown}" --arg t1 "${T1:--}" --arg t2 "${T2:--}" --argjson fp "${FIRST_PASS:-true}" \
   --argjson files "${FILES:-0}" --argjson ins "${INS:-0}" --argjson del "${DEL:-0}" --arg disp "${DISP:-none}" --argjson findings "${FINDINGS:-0}" \
   --arg mut "${MUT:--}" --arg branch "$BRANCH" --arg pr "${PR:-}" --argjson gates "${HUMAN_GATES:-0}" --arg review "$REVIEW_NEEDED" --arg risk "$RISK" \
-  --arg notes "autonomous half only: $SESSIONS sessions from the accepted tests to the evidence pack$([ "$FROM" -gt 4 ] && echo " (resumed from stage $FROM; wall time covers the resumed stages only)"); $HUMAN_GATES human acceptance gates preceded it; boundary review $REVIEW_NEEDED at risk $risk; timeline in evals/.runs/ticket/$TICKET-$STAMP" \
+  --arg notes "autonomous half only: $SESSIONS sessions from the accepted tests to the evidence pack$([ "$FROM" -gt 4 ] && echo " (resumed from stage $FROM; wall time covers the resumed stages only)"); $HUMAN_GATES human acceptance gates preceded it; boundary review $REVIEW_NEEDED at risk $RISK; timeline in evals/.runs/ticket/$TICKET-$STAMP" \
   '{ticket:$ticket, mode:"harnessed", startedAt:$started, wallSeconds:$wall, sessions:$sessions, model:$model,
     gate:{tier1:$t1, tier1FirstPass:$fp, tier2:$t2}, diff:{files:$files, insertions:$ins, deletions:$del},
     review:{disposition:$disp, findings:$findings}, mutationScorePercent:($mut|tonumber? // $mut),
     branch:$branch, pr:$pr, humanGates:$gates, architectureReview:$review, risk:$risk, notes:$notes}')"
-log "chain finished in ${WALL}s over $SESSIONS sessions; $(bin/chain-check.sh "$TICKET" --complete 2>&1 | tail -1)"
+# --complete only when the chain actually reached the end. It requires the evidence pack, so
+# running it after a stop for a human prints FAILED over a run that did exactly what it should,
+# and a red line nobody should act on is how people learn to ignore red lines.
+if [ -f "$EV" ]; then
+  log "chain finished in ${WALL}s over $SESSIONS sessions; $(bin/chain-check.sh "$TICKET" --complete 2>&1 | tail -1)"
+else
+  log "chain stopped for a human in ${WALL}s over $SESSIONS sessions; $(bin/chain-check.sh "$TICKET" 2>&1 | tail -1) (no evidence pack yet, which is correct)"
+fi
 echo
 echo "ticket: STOP. ${PR:+Pull request #$PR is }the human's to read and merge; the merge is the release."
