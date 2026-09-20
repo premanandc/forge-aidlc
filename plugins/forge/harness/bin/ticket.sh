@@ -27,8 +27,20 @@
 # bin/ticket-preconditions found itself running a real chain on a probe ticket.
 # Compatible with bash 3.2.
 set -uo pipefail
-TICKET=${1:-}; FROM=${2:-4}
-[ -n "$TICKET" ] || { echo "usage: bin/ticket.sh <TICKET> [from-stage 4-8]" >&2; exit 2; }
+TICKET=${1:-}; ARG2=${2:-4}
+# `address` is not a stage, it is a second round. A review that can only be accepted or refused is
+# a rubber stamp: the value of a reviewer finding something is that someone then closes it. The
+# three human gates already iterate freely, because nothing is committed until a human accepts, so
+# a draft can be rewritten any number of times without a trace. The review is the first feedback
+# that arrives after the work is in history, which is why it needs a mechanism of its own rather
+# than another edit to a draft.
+MODE=stages; FROM=4
+case "$ARG2" in
+  address) MODE=address;;
+  [0-9]*)  FROM=$ARG2;;
+  *) echo "usage: bin/ticket.sh <TICKET> [from-stage 4-8 | address]" >&2; exit 2;;
+esac
+[ -n "$TICKET" ] || { echo "usage: bin/ticket.sh <TICKET> [from-stage 4-8 | address]" >&2; exit 2; }
 ROOT=$(git rev-parse --show-toplevel); cd "$ROOT"
 BRANCH="ticket/$TICKET"
 die() { echo "ticket: $*" >&2; exit 2; }
@@ -79,6 +91,61 @@ role() {  # role <agent> <label> <prompt>   (label starts with the stage number)
   m=$(jq -r '(.modelUsage // {}) | keys | join("+")' "$out/claude.json" 2>/dev/null); MODELS="$MODELS,$m"
   log "$label done in ${e}s; HEAD $(git rev-parse --short HEAD); chain: $(bin/chain-check.sh "$TICKET" 2>&1 | tail -1)"
 }
+
+# --- address: a second round on the reviewer's findings ------------------------------
+# Runs after the preconditions above, which all still apply, and instead of stages 4-8.
+if [ "$MODE" = address ]; then
+  V="work/$TICKET/review-verdict.json"
+  [ -f "$V" ] || die "no $V; there is nothing to address until bin/review.sh has run"
+  DISP=$(jq -r '.disposition // ""' "$V")
+  [ "$DISP" != "auto-pass" ] || die "the review passed automatically; there is nothing to address"
+  [ "$(jq -r '.humanResolution // "null"' "$V")" = null ] \
+    || die "this verdict already carries a humanResolution; a round that answers a resolved review would rewrite a decision a human already made"
+  N=$(jq -r '.findings | length' "$V")
+  [ "$N" -gt 0 ] || die "the verdict has no findings to address"
+  VSHA=$(git log -1 --format=%h -- "$V")
+
+  STAMP=$(date -u +%Y%m%dT%H%M%SZ); RUN="$ROOT/evals/.runs/ticket/$TICKET-$STAMP-address"; mkdir -p "$RUN"
+  mkdir -p "work/$TICKET"; echo "$TICKET" >|work/.current-ticket
+  T0=$(date +%s); SESSIONS=0; MODELS=""
+  log() { echo "ticket: $(date -u +%H:%M:%SZ) $*" | tee -a "$RUN/timeline.log"; }
+  log "$TICKET address round on verdict $VSHA: $N finding(s), disposition $DISP"
+
+  # The findings, verbatim, so the implementer answers what the reviewer wrote rather than a
+  # summary of it. Declining is allowed and has to be said out loud: a silent refusal is how a
+  # finding disappears.
+  FINDINGS_TEXT=$(jq -r '.findings | to_entries[] | "\(.key+1). [\(.value.severity)] \(.value.path)\n   \(.value.note)"' "$V")
+
+  role implementer "6-address" "Ticket $TICKET is active (work/.current-ticket). The tests are locked and a human accepted them; plan: and impl: are committed; the independent reviewer has read the spec, the tests and your diff and returned disposition $DISP with $N finding(s) in $V, committed as $VSHA:
+
+$FINDINGS_TEXT
+
+Address them. Follow CLAUDE.md and your role: the tests stay locked and you never touch src/test, the gate must stay green, and the change should be the smallest one that answers the findings. You are not obliged to agree. Where you decline a finding, say so in the commit message and give the reason, because a finding that quietly disappears is worse than one that was argued with.
+
+Commit the result as an ordinary impl: $TICKET <summary> with the trailer
+
+    Addresses-Review: $VSHA
+
+so the record names the verdict this round answers. Do not edit $V: the reviewer owns it and the guards refuse it to you. Do not commit plan.md again."
+
+  # The reviewer looks again, at the new diff, and writes a fresh verdict. The previous one is not
+  # lost: it is a commit, and git keeps every round.
+  log "7-review (round 2) start"; s=$(date +%s)
+  bin/review.sh "$TICKET" | tee -a "$RUN/timeline.log"
+  SESSIONS=$((SESSIONS+1)); log "7-review (round 2) done in $(( $(date +%s) - s ))s"
+
+  DISP2=$(jq -r '.disposition // "?"' "$V"); N2=$(jq -r '.findings | length' "$V" 2>/dev/null)
+  log "address round finished in $(( $(date +%s) - T0 ))s over $SESSIONS sessions; disposition now $DISP2 with ${N2:-?} finding(s); $(bin/chain-check.sh "$TICKET" 2>&1 | tail -1)"
+  if git remote get-url origin >/dev/null 2>&1; then
+    git push -q origin "$BRANCH" && log "pushed $BRANCH" || log "push failed; push $BRANCH by hand"
+  fi
+  if [ "$DISP2" = "auto-pass" ]; then
+    log "the second look passed: bin/release.sh $TICKET assembles the evidence, then you merge the pull request"
+  else
+    log "still $DISP2: run this again for another round, or record your own humanResolution {by, decision, note} in $V, commit it with FORGE_REVIEWER=1, and run bin/release.sh $TICKET"
+  fi
+  exit 0
+fi
 
 role implementer 4-plan "Ticket $TICKET is active (work/.current-ticket). A human has accepted its intent, its spec and its failing tests; the tests are locked.
 

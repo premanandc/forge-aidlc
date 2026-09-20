@@ -19,8 +19,19 @@ TESTS_COMMIT=$(git log --format=%H --grep="^tests: $TICKET" | tail -1)
 IMPL_COMMITS=$(git log --reverse --format=%H --grep="^impl: $TICKET")
 [ -n "$IMPL_COMMITS" ] || { echo "review: no impl: commits for $TICKET" >&2; exit 2; }
 FIRST_IMPL=$(echo "$IMPL_COMMITS" | head -1); LAST_IMPL=$(echo "$IMPL_COMMITS" | tail -1)
-DIFF=$(git diff "$FIRST_IMPL^" "$LAST_IMPL" -- . ':(exclude)work/**')
-TOUCHED=$(git diff --name-only "$FIRST_IMPL^" "$LAST_IMPL")
+# The range FIRST_IMPL^..LAST_IMPL is the ticket's span, not the ticket's work. Anything merged
+# into the branch from main while the ticket was open sits inside it, and the reviewer, seeing
+# only the spec, the tests and this diff, reasonably reads it as the implementer's doing. On
+# PF-103 that put 82 lines of bin/ticket.sh in front of the reviewer, which blocked the ticket for
+# harness commits nobody on the ticket had made. So the diff is restricted to the paths the impl
+# commits themselves touched: a merge from main brings files the implementer never wrote, and
+# those drop out. The net state of those paths is what gets reviewed, not each round separately.
+IMPL_PATHS=$(for c in $IMPL_COMMITS; do git diff-tree --no-commit-id --name-only -r "$c"; done | sort -u | grep -v '^work/' || true)
+[ -n "$IMPL_PATHS" ] || { echo "review: the impl: commits for $TICKET touch no files outside work/" >&2; exit 2; }
+# shellcheck disable=SC2086
+DIFF=$(git diff "$FIRST_IMPL^" "$LAST_IMPL" -- $IMPL_PATHS)
+# shellcheck disable=SC2086
+TOUCHED=$(git diff --name-only "$FIRST_IMPL^" "$LAST_IMPL" -- $IMPL_PATHS)
 TEST_FILES=$([ -n "$TESTS_COMMIT" ] && git diff-tree --no-commit-id --name-only -r "$TESTS_COMMIT" | grep '^src/test/' || true)
 TESTS_TEXT=$(for f in $TEST_FILES; do echo "=== $f"; git show "$LAST_IMPL:$f" 2>/dev/null || git show "$TESTS_COMMIT:$f"; done)
 

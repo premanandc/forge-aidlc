@@ -17,8 +17,13 @@ cd "$(git rev-parse --show-toplevel)" || exit 1
 # of the truth, and run from main they would pass, so the suite's answer would depend on where it
 # happened to be run. Re-run the whole thing in a detached worktree, where no branch claims a
 # ticket and the pointer file decides, as the cases expect. CI checks out detached already.
+# Any named branch, not just ticket/*. On a ticket branch the derivation claims that ticket; on
+# main it ignores the pointer entirely. Either way the cases below, which steer the guard by
+# writing work/.current-ticket, are not testing what they think. Only a detached HEAD leaves the
+# pointer in charge, which is the state they were written for and the one CI checks out.
 case "$(git branch --show-current 2>/dev/null)" in
-  ticket/*)
+  "") ;;
+  *)
     [ -z "${FORGE_SELFTEST_DETACHED:-}" ] || { echo "guard-selftest: still on a ticket branch inside the worktree"; exit 1; }
     SELF_WT=$(mktemp -d "${TMPDIR:-/tmp}/guardself.XXXXXX"); rmdir "$SELF_WT"
     git worktree add -q --detach "$SELF_WT" HEAD || { echo "guard-selftest: could not create the worktree"; exit 1; }
