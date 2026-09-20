@@ -102,6 +102,10 @@ jobs:
           distribution: temurin
           java-version: '25'
           cache: maven
+      - name: pipeline check
+        run: |
+          bin/pipeline-check.sh --selftest
+          bin/pipeline-check.sh
       - name: guard selftest
         run: bin/guard-selftest.sh
       - name: chain-check selftest

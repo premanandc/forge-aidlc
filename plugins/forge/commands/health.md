@@ -1,11 +1,13 @@
 ---
-description: Check the harness itself: fleet integrity, the guard, chain and ticket selftests, and the tier 1 gate.
+description: Check the harness itself: fleet integrity, the pipeline, guard, chain and ticket selftests, and the tier 1 gate.
 ---
 
 Run these in order and report each result. Keep going after a failure; the point is a full picture.
 
 ```bash
 bin/fleet-check.sh
+bin/pipeline-check.sh --selftest
+bin/pipeline-check.sh
 bin/guard-selftest.sh
 bin/chain-check-selftest.sh
 bin/ticket-preconditions-selftest.sh

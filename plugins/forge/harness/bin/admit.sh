@@ -326,7 +326,7 @@ prepare_worktree() {
 }
 
 ticket_of() {  # $1 = task dir ; the ticket id its fixture declares, if any
-  ls "$1/fixture/work" 2>/dev/null | grep -E '^PF-[0-9]+$' | head -1
+  ls "$1/fixture/work" 2>/dev/null | grep -E '^PF-[0-9]+$' | sed -n 1p
 }
 
 PASS=0; FAIL=0; SUMMARY=""

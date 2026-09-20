@@ -31,6 +31,8 @@ fi
 
 # The fleet must match its admissions before any session ends, ticket or not.
 if [ -x bin/fleet-check.sh ] && ! FLEET_OUT=$(bin/fleet-check.sh 2>&1); then
+  # pipeline-ok: the pipeline is fed by echo of a shell variable, which is bounded and finishes
+  # writing before head can exit. The jq on this line is a separate command, not its reader.
   jq -n --arg r "fleet-check failed:"$'\n'"$(echo "$FLEET_OUT" | grep FAIL | head -5)" \
     '{hookSpecificOutput:{hookEventName:"Stop",decision:"block",reason:$r}}'
   exit 0

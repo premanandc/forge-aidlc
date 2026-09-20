@@ -156,8 +156,10 @@ gh pr merge $PR --merge --subject \"release: $TICKET $(jq -r '.title // ""' "wor
 fi
 
 WALL=$(( $(date +%s) - T0 ))
-IMPL_FIRST=$(git log --reverse --topo-order --format=%H --grep="^impl: $TICKET" | head -1)
-IMPL_LAST=$(git log --format=%H --grep="^impl: $TICKET" | head -1)
+# sed -n 1p rather than head -1: head exits on its first line and git dies writing into a closed
+# pipe. IMPL_LAST wants the most recent, which git can answer on its own without a pipe at all.
+IMPL_FIRST=$(git log --reverse --topo-order --format=%H --grep="^impl: $TICKET" | sed -n 1p)
+IMPL_LAST=$(git log -1 --format=%H --grep="^impl: $TICKET")
 STAT=$([ -n "$IMPL_FIRST" ] && git diff --shortstat "$IMPL_FIRST^" "$IMPL_LAST" -- src || echo "")
 FILES=$(echo "$STAT" | grep -oE '[0-9]+ files? changed' | grep -oE '^[0-9]+' || echo 0)
 INS=$(echo "$STAT" | grep -oE '[0-9]+ insertions?' | grep -oE '^[0-9]+' || echo 0)

@@ -130,7 +130,9 @@ unforgeable by the person who owns the repository.
 
 **The rules are tested like code**, because they are code. `bin/guard-selftest.sh` runs 47 cases,
 `bin/chain-check-selftest.sh` builds 22 deliberately broken histories, and
-`bin/ticket-preconditions-selftest.sh` checks the autonomous half refuses to start early. Nearly
+`bin/ticket-preconditions-selftest.sh` checks the autonomous half refuses to start early, and
+`bin/pipeline-check.sh` refuses a pipe from an unbounded producer into a reader that stops early,
+because that one shape silently turned four different checks into their permissive answer. Nearly
 every case is a bug that actually happened, including the permissive ones: a guard that blocks too
 much is as broken as one that blocks too little, and most of those cases exist because an
 over-broad rule once stopped legitimate work.

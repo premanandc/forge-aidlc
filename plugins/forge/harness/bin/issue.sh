@@ -221,7 +221,7 @@ case "$CMD" in
     J=$(issue_json "$T"); [ -n "$J" ] || die "no issue for $T"
     N=$(printf '%s' "$J" | jq -r .number)
     LABEL_RISK=$(printf '%s' "$J" | jq -r '[.labels[].name | select(startswith("risk:"))][0] // "" | sub("risk:";"")')
-    BODY_RISK=$(printf '%s' "$J" | jq -r '.body // ""' | awk '/^###[[:space:]]*Risk/{f=1; next} f && NF {print tolower($0); exit}' | tr -d '[:space:]')
+    BODY_RISK=$(printf '%s' "$J" | jq -r '.body // ""' | awk '/^###[[:space:]]*Risk/{f=1; next} f && NF && !seen {print tolower($0); seen=1}' | tr -d '[:space:]')
     case "$BODY_RISK" in
       low|medium|high)
         if [ "$BODY_RISK" != "$LABEL_RISK" ]; then
