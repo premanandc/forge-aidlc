@@ -1,0 +1,29 @@
+name: Ticket
+description: A backlog item the factory will run through the chain (intent, spec, tests accepted by a human; the fleet does the rest on a PR)
+title: "PF-NNN: "
+labels: ["ticket", "risk:medium", "stage:filed"]
+body:
+  - type: textarea
+    id: story
+    attributes:
+      label: Story
+      description: One or two sentences in the domain's words. The intent-drafter turns this into work/<T>/intent.md for you to accept.
+    validations:
+      required: true
+  - type: input
+    id: modules
+    attributes:
+      label: Modules touched
+      placeholder: screening, enrollment
+  - type: dropdown
+    id: risk
+    attributes:
+      label: Risk
+      description: "High risk makes every human gate required. A form can only apply one fixed label, so this answer is reconciled onto the risk: label by bin/issue.sh when the ticket is picked up; you do not need to change the label by hand."
+      options: [low, medium, high]
+      default: 1
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes for the drafters
+      description: Constraints, examples, or the functional requirement this serves (FR-xx).

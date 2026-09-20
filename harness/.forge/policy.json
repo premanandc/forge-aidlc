@@ -1,0 +1,16 @@
+{
+  "$comment": "Repo-wide chain policy, written by humans and refused to agent sessions by bin/guard.sh. A ticket may override the relaxable keys in work/<T>/policy.json. Acceptance of the intent and the spec has no key: it is always a person's, and only a ticket that predates the gate is exempt. bin/policy.sh resolves the effective value and fails closed to 'required'.",
+  "humanAcceptance": {
+    "tests": "required"
+  },
+  "architectureReview": "by-risk",
+  "defaultRisk": "medium",
+  "testLock": "strict",
+  "reviewerFloor": "needs-human",
+  "mergeMethod": "merge",
+  "values": {
+    "humanAcceptance.tests": ["required", "by-risk"],
+    "architectureReview": ["required", "by-risk", "optional"],
+    "by-risk": "required when the ticket's risk label is high, and for architectureReview also when the spec's Contract names an event or more than one module; optional otherwise"
+  }
+}

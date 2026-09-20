@@ -1,0 +1,123 @@
+# The gates, run by GitHub on every pull request and on main. Nothing here calls a model: the
+# same scripts a developer runs locally run here, so a PR shows the tier 1 gate, the fleet
+# integrity check and the chain check for its ticket. The free plan offers no branch protection,
+# so these checks inform the human who merges; the local guards and pre-commit hook enforce.
+name: gates
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: gates-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  tier1:
+    name: tier 1 gate, fleet, chain
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # chain-check reads the whole history of the ticket
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+      - name: tier 1 (mvn clean verify)
+        run: mvn -B
+      - name: fleet integrity
+        run: bin/fleet-check.sh
+      - name: chain-check
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          set -e
+          if [[ "$HEAD_REF" == ticket/* ]]; then
+            T=${HEAD_REF#ticket/}
+            if [ -f "work/$T/evidence.json" ]; then bin/chain-check.sh "$T" --complete; else bin/chain-check.sh "$T"; fi
+          else
+            # main, or a branch that is not a ticket: every shipped ticket must still be complete
+            for ev in work/*/evidence.json; do
+              [ -f "$ev" ] || continue
+              bin/chain-check.sh "$(basename "$(dirname "$ev")")" --complete
+            done
+          fi
+      - name: reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tier1-reports
+          if-no-files-found: ignore
+          path: |
+            target/site/jacoco/
+            target/spotbugsXml.xml
+            target/classes/META-INF/sbom/
+            target/generated-docs/
+
+  tier2:
+    name: tier 2 (mutation, dependency-check)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+      - name: NVD data cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.dependency-check-data
+          key: nvd-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: nvd-${{ runner.os }}-
+      - name: tier 2 (mvn verify -Pfull-quality)
+        env:
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+        run: mvn -B verify -Pfull-quality
+      - name: reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tier2-reports
+          if-no-files-found: ignore
+          path: |
+            target/pit-reports/
+            target/dependency-check-report.html
+
+  selftests:
+    name: harness selftests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+      - name: guard selftest
+        run: bin/guard-selftest.sh
+      - name: chain-check selftest
+        run: bin/chain-check-selftest.sh
+      - name: ticket preconditions selftest
+        run: |
+          git config --global user.email ci@forge.demo; git config --global user.name ci
+          bin/ticket-preconditions-selftest.sh
+      - name: golden-task assertion selftests
+        run: |
+          set -e
+          git config --global user.email ci@forge.demo; git config --global user.name ci
+          for d in evals/*/; do
+            a=$(basename "$d")
+            # `[ ... ] && continue` would end the step under `bash -e` on every directory that is
+            # not lib, because the failed test is the list's exit status.
+            if [ "$a" = lib ]; then continue; fi
+            bin/admit.sh "$a" --selftest
+          done

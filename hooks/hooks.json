@@ -1,0 +1,38 @@
+{
+  "_comment": "Each hook delegates to the copy of the harness vendored into the project, because the same rules must run from a terminal and in CI where no agent session exists. The test guard matters: this plugin may be enabled globally, and a project without a Forge harness must be left completely alone rather than seeing a hook error on every edit.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "H=\"$CLAUDE_PROJECT_DIR/bin/hooks/pretooluse-guard.sh\"; [ -x \"$H\" ] || exit 0; exec \"$H\"",
+            "timeout": 15
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "H=\"$CLAUDE_PROJECT_DIR/bin/hooks/pretooluse-bash.sh\"; [ -x \"$H\" ] || exit 0; exec \"$H\"",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "H=\"$CLAUDE_PROJECT_DIR/bin/hooks/stop-chain-check.sh\"; [ -x \"$H\" ] || exit 0; exec \"$H\"",
+            "timeout": 60
+          }
+        ]
+      }
+    ]
+  }
+}

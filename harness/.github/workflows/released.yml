@@ -1,0 +1,40 @@
+# The last state transition, and the only one no local script can make: a human merged the
+# ticket's pull request, which is the release. bin/accept.sh and bin/ticket.sh label the issue as
+# the chain advances, but nothing runs on the merge itself, so stage:released was a label the
+# harness documented and never applied. This closes that.
+#
+# It also re-renders the chain comment, so the issue's record ends with the merge commit rather
+# than stopping at "ready for review".
+name: released
+on:
+  pull_request:
+    types: [closed]
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+jobs:
+  label:
+    if: github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'ticket/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: mark the ticket released
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          set -e
+          # The head ref comes from whoever opened the pull request, so it reaches this script
+          # through the environment rather than template interpolation, and it is matched against
+          # an exact pattern before anything is done with it. A glob would not be enough:
+          # "PF-1; anything" matches PF-[0-9]* .
+          T=${HEAD_REF#ticket/}
+          if ! [[ "$T" =~ ^PF-[0-9]+$ ]]; then   # template: ticket id pattern
+            echo "released: '$T' is not a ticket id; nothing to do"; exit 0
+          fi
+          bin/issue.sh stage "$T" released
+          bin/issue.sh render "$T"

@@ -1,0 +1,24 @@
+{
+  "$comment": "The fleet's organisation, owned by humans (bin/guard.sh closes it to agent sessions). Every agent belongs to one family with a narrow purpose, a human owner accountable for its output, and a rung on the autonomy ladder. bin/admit.sh refuses a candidate this file does not name; bin/fleet-check.sh verifies FLEET.md agrees with it. OWNERS ARE A PLACEHOLDER: the suite ships capability, not accountability, so /forge:install asks who owns each family and writes the answers here.",
+  "ladder": {
+    "assist": "drafts for a human who accepts or amends; never commits scope",
+    "propose": "commits on a ticket branch and proposes via pull request; a human merges",
+    "act": "acts within deterministic gates; a human reviews the record"
+  },
+  "families": {
+    "product":      {"owner": "UNASSIGNED", "role": "product owner",   "checkpoint": "accepts intent and spec (bin/accept.sh)"},
+    "architecture": {"owner": "UNASSIGNED", "role": "architect",       "checkpoint": "accepts the Contract inside the spec; boundary review of the plan by policy"},
+    "qa":           {"owner": "UNASSIGNED", "role": "QA lead",         "checkpoint": "accepts the failing tests, which then lock (bin/accept.sh tests)"},
+    "engineering":  {"owner": "UNASSIGNED", "role": "tech lead",       "checkpoint": "the gates; the independent reviewer's verdict"},
+    "security":     {"owner": "UNASSIGNED", "role": "security lead",   "checkpoint": "the reviewer's risk floor and the static analysis; no agent yet"},
+    "release":      {"owner": "UNASSIGNED", "role": "release manager", "checkpoint": "merges the pull request (the release)"}
+  },
+  "agents": {
+    "intent-drafter":  {"family": "product",      "ladder": "assist",  "purpose": "turn an issue into work/<T>/intent.md with open questions for the product owner to accept"},
+    "spec-drafter":    {"family": "product",      "ladder": "assist",  "purpose": "turn an accepted intent into work/<T>/spec.md: behaviour, acceptance criteria, a draft Contract, open questions"},
+    "architect":       {"family": "architecture", "ladder": "propose", "purpose": "correct the Contract and write ADRs before acceptance; boundary-review the plan and commit plan: after the lock"},
+    "test-designer":   {"family": "qa",           "ladder": "assist",  "purpose": "draft failing tests from the accepted spec and prove them red for the QA lead to accept"},
+    "implementer":     {"family": "engineering",  "ladder": "propose", "purpose": "draft plan.md, then make the locked tests pass with the smallest diff that keeps the gate green; commit impl:"},
+    "release-manager": {"family": "release",      "ladder": "propose", "purpose": "run both gate tiers, assemble evidence.json, commit evidence:, stop before the release"}
+  }
+}

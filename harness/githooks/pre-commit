@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Git pre-commit hook, installed into .git/hooks by the build (git-build-hook-maven-plugin).
+# Second enforcement layer behind the Claude Code hooks: it stops the commit itself, no
+# matter which tool or person is committing. Delegates every rule to bin/guard.sh.
+set -uo pipefail
+ROOT=$(git rev-parse --show-toplevel)
+cd "$ROOT"
+out=$(bin/guard.sh --staged); rc=$?
+[ -n "$out" ] && echo "$out"
+if [ $rc -ne 0 ]; then
+  echo "pre-commit: refused by bin/guard.sh (exit $rc). See CLAUDE.md, Prohibitions."
+  exit 1
+fi
+exit 0
