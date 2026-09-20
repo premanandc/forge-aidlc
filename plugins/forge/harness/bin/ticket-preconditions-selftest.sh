@@ -26,8 +26,11 @@ trap cleanup EXIT
 git worktree add -q -b "ticket/$T" "$WT" HEAD || { echo "ticket-preconditions: could not create the worktree"; exit 1; }
 # A worktree checks out committed files, so it would otherwise run the last committed harness
 # rather than the one being edited. Copy the working tree's scripts in: this test exists to check
-# the code in front of you.
+# the code in front of you. The same goes for .forge/, which the scripts now read this project's
+# facts from; without it fleet-render cannot order the registry, fleet-check fails, and every case
+# here fails for that reason instead of the one it is testing.
 cp -Rf "$ROOT/bin/." "$WT/bin/"
+mkdir -p "$WT/.forge"; cp -Rf "$ROOT/.forge/." "$WT/.forge/"
 cd "$WT"
 # Identity through the environment, never `git config`. A linked worktree shares .git/config with
 # the primary checkout, so `git config user.name selftest` here rewrote the whole repository's
@@ -36,8 +39,10 @@ cd "$WT"
 export GIT_AUTHOR_NAME=selftest GIT_AUTHOR_EMAIL=selftest@example.com
 export GIT_COMMITTER_NAME=selftest GIT_COMMITTER_EMAIL=selftest@example.com
 export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=commit.gpgsign GIT_CONFIG_VALUE_0=false
-# Commit them, or the copy itself is the unclean tree the last case is meant to detect.
-git add -A bin >/dev/null 2>&1 && git commit -q -m "chore: the harness under test" >/dev/null 2>&1
+# Commit them, or the copy itself is the unclean tree the last case is meant to detect. Both
+# directories: .forge/project.json is often newer than HEAD in the tree being worked on, and left
+# untracked here it made every case fail as "working tree not clean".
+git add -A bin .forge >/dev/null 2>&1 && git commit -q -m "chore: the harness under test" >/dev/null 2>&1
 export FORGE_TICKET_DRY_RUN=1
 # Refuse to run at all unless the script under test honours the dry run. Without this check a
 # missing flag does not fail the test, it starts live sessions; that has happened twice.

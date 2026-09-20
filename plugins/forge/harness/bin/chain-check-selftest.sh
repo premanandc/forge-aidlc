@@ -3,7 +3,9 @@
 # that bin/chain-check.sh passes or fails each one as intended. Never touches this repo.
 # The scratch repositories carry no .forge/policy.json, so bin/policy.sh applies its built-in
 # defaults (tests acceptance required, architecture review by risk, default risk medium); the
-# scenarios that need a different policy write work/<T>/policy.json or ticket.json.
+# scenarios that need a different policy write work/<T>/policy.json or ticket.json. They do carry
+# .forge/project.json, which holds the module names policy.sh counts in a Contract; absent, that
+# count fails closed and every boundary review resolves required.
 set -euo pipefail
 
 CHECK="$(cd "$(dirname "$0")" && pwd)/chain-check.sh"
@@ -21,7 +23,14 @@ new_repo() {  # $1 = name ; cds into a fresh repo
   # and configuring an identity in one rewrote this project's for eleven commits.
   git config user.email selftest@example.com; git config user.name selftest
   git config commit.gpgsign false
-  mkdir -p "work/$T" src/main/java src/test/java
+  mkdir -p "work/$T" src/main/java src/test/java .forge
+  # No .forge/policy.json, so bin/policy.sh applies its built-in defaults, which is the point.
+  # But .forge/project.json is there, because every real project has one and policy.sh reads the
+  # module names from it to decide whether a Contract touches more than one module. Without them
+  # the count cannot be trusted and the boundary review resolves required, which is the right
+  # answer in a repository and the wrong fixture here: these cases are about the policy, not about
+  # a project nobody configured.
+  printf '{"modules":["enrollment","screening","decision","registry","correspondence"]}\n' > .forge/project.json
   echo "# seed" > README.md; git add -A; git commit -q -m "chore: seed"
 }
 commit() {  # $1 = subject, $2 = optional body (trailers go here)
