@@ -11,7 +11,7 @@ set -euo pipefail
 SRC=${1:-}
 [ -n "$SRC" ] || { echo "usage: ./sync-from-source.sh <source-repo>" >&2; exit 2; }
 [ -d "$SRC/bin" ] || { echo "sync: $SRC has no bin/; is that the harness repository?" >&2; exit 1; }
-HERE=$(cd "$(dirname "$0")" && pwd); cd "$HERE"
+HERE=$(cd "$(dirname "$0")" && pwd); cd "$HERE"   # the plugin root, under plugins/
 
 mkdir -p harness/bin/hooks harness/githooks harness/templates harness/evals/lib \
          harness/.github/workflows commands agents

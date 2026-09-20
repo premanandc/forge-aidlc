@@ -1,0 +1,19 @@
+{
+  "name": "forge-aidlc",
+  "description": "Harnesses for AI-first delivery: narrow agents with one job each, human acceptance gates before any code is written, and deterministic gates after it.",
+  "owner": {
+    "name": "Premanand Chandrasekaran",
+    "url": "https://github.com/premanandc"
+  },
+  "plugins": [
+    {
+      "name": "forge",
+      "source": "./plugins/forge",
+      "description": "An AI-first delivery harness: six narrow agents, three human acceptance gates before any code, and deterministic gates after it. Requirements are settled by people; the rest is checked by machines.",
+      "version": "0.1.0",
+      "author": { "name": "Premanand Chandrasekaran" },
+      "category": "workflow",
+      "tags": ["aidlc", "governance", "code-review", "tdd", "audit"]
+    }
+  ]
+}

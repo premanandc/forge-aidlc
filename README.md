@@ -33,9 +33,23 @@ agent session exists.
 
 ## Install
 
+Try it without installing:
+
 ```bash
-claude --plugin-dir /path/to/forge          # try it
-/forge:install                              # equip the current repository
+claude --plugin-dir /path/to/forge-aidlc/plugins/forge
+```
+
+Install it properly, once this repository is published:
+
+```
+/plugin marketplace add premanandc/forge-aidlc
+/plugin install forge@forge-aidlc
+```
+
+Then equip a repository:
+
+```
+/forge:install
 ```
 
 The installer vendors the scripts, seeds the policy and the fleet catalog, and records where each
@@ -66,6 +80,10 @@ feature.
 The harness is developed and exercised in a real project and copied here:
 
 ```bash
-./sync-from-source.sh /path/to/the-source-repo
-claude plugin validate .
+plugins/forge/sync-from-source.sh /path/to/the-source-repo
+claude plugin validate ./plugins/forge
 ```
+
+The repository is a marketplace holding one plugin, which is the layout Claude Code documents:
+`.claude-plugin/marketplace.json` at the root lists `./plugins/forge`, and the plugin carries its
+own `.claude-plugin/plugin.json`. A second plugin later is another entry and another directory.
