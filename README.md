@@ -1,11 +1,16 @@
 # Forge
 
-An AI-first delivery harness, packaged as a Claude Code plugin.
+A delivery harness for Claude Code that makes an agent stop and ask a person at the three points
+where stopping matters.
 
-Six narrow agents, three human acceptance gates before any code is written, and deterministic
-gates after it. The argument underneath: **requirements are settled by people, and what follows
-can be checked by machines.** Agents draft the first half and a person accepts it; agents execute
-the second half and gates judge it.
+Agents write working code quickly; the trouble is rarely the code. It is that one actor drafts the
+requirement, decides what it means, writes the tests, satisfies them and reports success, with no
+person deciding anything and no record saying otherwise. Forge splits that in two: **requirements
+are settled by people, and what follows is checked by machines.** The refusals are enforced by
+hooks and git rather than by asking an agent nicely.
+
+Full reasoning, including what it does not claim, is in
+[plugins/forge/README.md](plugins/forge/README.md).
 
 ## What it is
 

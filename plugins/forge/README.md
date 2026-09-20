@@ -1,12 +1,52 @@
 # forge
 
-An AI-first delivery harness for Claude Code. Six narrow agents, three human acceptance gates
-before any code is written, and deterministic gates after it.
+A delivery harness for Claude Code that makes an agent stop and ask a person at the three points
+where stopping matters.
 
-The argument underneath: **requirements are settled by people, and what follows can be checked by
-machines.** Agents draft the first half and a person accepts it. Agents execute the second half
-and gates judge it. An agent that accepted its own draft would have taken a decision that is not
-its to take, so the harness refuses in four places rather than asking nicely.
+## The problem it solves
+
+Agents write working code quickly. The trouble is rarely the code.
+
+It is that an agent asked to build something will draft the requirement, decide what the
+requirement means, write the tests, satisfy them, and report success, in one unbroken motion. No
+person decided anything, and nothing in the record says otherwise. Four failures follow, and every
+one is familiar:
+
+- **A spec nobody agreed to.** The agent inferred what you meant, sensibly, and inferred wrong in
+  a way that only surfaces after the code exists.
+- **Tests adjusted until they pass.** A failing test is an obstacle if the same actor owns the
+  test and the implementation. The oracle moves and the build goes green.
+- **Work that reviewed itself.** An agent's own account of its work is not a review, however
+  thorough it reads.
+- **No record.** Six months later nobody can say who agreed to what, or on what evidence, because
+  approval happened in a chat window nobody kept.
+
+None of these are fixed by a better prompt. "Please stop and ask" is a request, and an agent
+optimising for a finished task will route around a request.
+
+## What it does about it
+
+It splits a ticket in two. **Requirements are settled by people; what follows is checked by
+machines.**
+
+Before any code exists, three artifacts need a human's acceptance: the statement of the problem,
+the specification, and the failing tests. Agents draft all three and stop. A person accepts each
+one deliberately, and that acceptance is recorded as a signature on a commit.
+
+After that, agents work and deterministic gates judge them: the tests are frozen, the module
+boundaries checked, an independent reviewer sees only the spec, the tests and the diff, and the
+evidence is assembled before anything can ship. You merge; nothing else can.
+
+**The refusals are mechanical, not instructional.** An agent cannot commit an artifact you have
+not accepted, cannot write an acceptance signature, cannot touch a test once it is locked, cannot
+write its own review verdict, and cannot merge. Those are enforced by hooks and git, not by
+paragraphs in a prompt asking nicely.
+
+## Who this is for
+
+Teams who want agents to do more of the work and need to be able to answer, later, who decided
+what and on what basis. It costs you three decisions per ticket. If that sounds like too much
+friction for what you are building, it probably is, and you should not install it.
 
 ## Before you start
 
@@ -59,6 +99,43 @@ claude --plugin-dir /path/to/forge-aidlc/plugins/forge
 /forge:ticket PF-103                                                      # the fleet runs, opens a PR
 gh pr merge <N> --merge --subject "release: PF-103 ..."                   # YOU merge; that is the release
 ```
+
+## How it is enforced
+
+Four layers read the same rule file, `bin/guard.sh`, and see different things. That matters,
+because each covers what the others cannot.
+
+| layer | fires when | sees | exists |
+|---|---|---|---|
+| PreToolUse on Edit/Write | an agent is about to write a file | the target path | only in a Claude session |
+| PreToolUse on Bash | an agent is about to run a command | the command text | only in a Claude session |
+| `.git/hooks/pre-commit` | **anyone** commits | the staged files | always, for every commit |
+| `bin/chain-check.sh` | on demand, and in CI on every push | the git history | anywhere, no session needed |
+
+The first two stop an agent before it acts and can say why in the refusal. The third stops the
+commit itself and cannot be talked around, but it only sees files. The fourth is not a guard at
+all: it reads the history afterwards and runs in CI, where no hook and no agent session exists.
+
+A worked example. An agent cannot write an acceptance signature, because the Bash layer refuses
+any command containing a commit with that trailer. But suppose one got past it: the chain check
+would still refuse a `tests:` commit whose spec nobody accepted, and that check runs on GitHub
+where the agent has no reach at all. The test lock works the same way, caught by the Bash layer
+when an agent reaches for a frozen test and by the pre-commit layer whatever route the change
+took.
+
+**What it does not claim.** These stop agents, not you. Nothing prevents you hand-crafting a
+commit with someone else's name in an acceptance trailer, any more than git stops you setting
+`user.name` to a colleague's. What you get is a record that is *checkable*, not one that is
+unforgeable by the person who owns the repository.
+
+**The rules are tested like code**, because they are code. `bin/guard-selftest.sh` runs 41 cases,
+`bin/chain-check-selftest.sh` builds 22 deliberately broken histories, and
+`bin/ticket-preconditions-selftest.sh` checks the autonomous half refuses to start early. Nearly
+every case is a bug that actually happened, including the permissive ones: a guard that blocks too
+much is as broken as one that blocks too little, and most of those cases exist because an
+over-broad rule once stopped legitimate work.
+
+Run all of it, plus your own build, with `/forge:health`.
 
 ## Commands
 
