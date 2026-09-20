@@ -8,6 +8,28 @@ machines.** Agents draft the first half and a person accepts it. Agents execute 
 and gates judge it. An agent that accepted its own draft would have taken a decision that is not
 its to take, so the harness refuses in four places rather than asking nicely.
 
+## Before you start
+
+| tool | why |
+|---|---|
+| `git` | everything: the chain is git history, and the gates read it |
+| `gh`, authenticated | issues and pull requests: the backlog, the chain comment on an issue, the release |
+| `jq` | the policy, the fleet catalog, the review verdict and the evidence pack are all JSON |
+| `python3` | the dependency guard and the agent definition parser |
+
+```bash
+brew install git jq gh python   # macOS
+gh auth login
+```
+
+`/forge:init` checks all four and refuses to write anything until they are present, so you will
+be told up front rather than three commands into a chain.
+
+**One thing the harness does not supply: your build.** The CI workflow it vendors runs this
+project's gates, and this project is Java and Maven, so `.github/workflows/gates.yml` pins Temurin
+and calls `mvn`. Replace those build steps with your own. The parts that are not the build, the
+chain check, the fleet check and the harness selftests, work anywhere.
+
 ## Install
 
 ```

@@ -13,6 +13,12 @@ One plugin, `forge`. Six narrow agents, sixteen `/forge:*` commands, and the gat
 vendored into whatever repository you equip. Full documentation, including every command and what
 lands in your repository, is in [plugins/forge/README.md](plugins/forge/README.md).
 
+## Before you start
+
+You need `git`, `jq`, `python3`, and `gh` authenticated (`gh auth login`). `/forge:init` checks
+all four before writing anything. The CI workflow it vendors runs a Maven build, because that is
+what the project it came from uses; swap those steps for your own.
+
 ## Install
 
 ```

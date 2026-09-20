@@ -44,6 +44,26 @@ done
 die() { echo "forge-install: $*" >&2; exit 1; }
 [ -n "$PLUGIN" ] || die "usage: forge-install.sh --from <plugin-root> [--owner \"<name> (<login>)\"]"
 [ -d "$PLUGIN/harness" ] || die "$PLUGIN does not look like the Forge plugin (no harness/)"
+
+# Everything missing, reported at once, before anything is written. Each of these is load-bearing,
+# and without this check the first sign of an absent tool is a script failing three commands into
+# a chain with an error that names the script rather than what is missing.
+MISSING=""
+need() {  # $1 = command, $2 = what stops working without it
+  command -v "$1" >/dev/null 2>&1 || MISSING="$MISSING
+    $1 — $2"
+}
+need git     "everything: the chain is git history"
+need jq      "the policy, the catalog, the review verdict and the evidence pack are all JSON"
+need gh      "issues and pull requests: the backlog, the chain comment, the release"
+need python3 "the pom guard and the agent definition parser"
+[ -z "$MISSING" ] || {
+  echo "forge-install: not installing, because these are missing:$MISSING" >&2
+  echo "forge-install: on macOS: brew install git jq gh python" >&2
+  exit 1
+}
+# gh present but not logged in is the same problem, one step later.
+gh auth status >/dev/null 2>&1 || die "gh is installed but not authenticated. Run 'gh auth login' first: the harness files issues, opens pull requests, and records your login when you accept an artifact."
 git rev-parse --show-toplevel >/dev/null 2>&1 || die "run this from inside the git repository you are equipping"
 ROOT=$(git rev-parse --show-toplevel); cd "$ROOT"
 VERSION=$(jq -r '.version // "unknown"' "$PLUGIN/.claude-plugin/plugin.json" 2>/dev/null)
