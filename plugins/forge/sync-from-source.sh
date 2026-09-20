@@ -14,7 +14,7 @@ SRC=${1:-}
 HERE=$(cd "$(dirname "$0")" && pwd); cd "$HERE"   # the plugin root, under plugins/
 
 mkdir -p harness/bin/hooks harness/githooks harness/templates harness/evals/lib \
-         harness/.github/workflows commands agents
+         harness/.github/workflows harness/agents commands
 
 command cp -f "$SRC"/bin/*.sh "$SRC"/bin/*.py harness/bin/
 command cp -f "$SRC"/bin/hooks/*.sh harness/bin/hooks/
@@ -25,12 +25,12 @@ command cp -f "$SRC"/evals/README.md harness/evals/
 command cp -f "$SRC"/.github/workflows/*.yml harness/.github/workflows/
 command cp -Rf "$SRC"/.github/ISSUE_TEMPLATE harness/.github/
 command cp -f "$SRC"/.claude/commands/forge/*.md commands/
-command cp -f "$SRC"/.claude/agents/*.md agents/
+command cp -f "$SRC"/.claude/agents/*.md harness/agents/
 
 # forge-install.sh is this plugin's own, not the source repo's: it installs the harness rather
 # than being part of it, so a sync must not delete it.
 [ -f harness/bin/forge-install.sh ] || echo "sync: WARNING harness/bin/forge-install.sh is missing"
 chmod +x harness/bin/*.sh harness/bin/hooks/*.sh harness/githooks/pre-commit
 
-echo "sync: commands $(ls commands | wc -l | tr -d ' '), agents $(ls agents | wc -l | tr -d ' '), harness files $(find harness -type f | wc -l | tr -d ' ')"
+echo "sync: commands $(ls commands | wc -l | tr -d ' '), agents $(ls harness/agents | wc -l | tr -d ' '), harness files $(find harness -type f | wc -l | tr -d ' ')"
 echo "sync: from $SRC at $(git -C "$SRC" rev-parse --short HEAD 2>/dev/null || echo 'unknown')"

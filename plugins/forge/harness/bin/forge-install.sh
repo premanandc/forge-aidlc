@@ -21,6 +21,12 @@
 # Recording the hash keeps drift detection working: editing a suite agent afterwards is caught
 # exactly as any other drift is.
 #
+# The agents are vendored into .claude/agents/ rather than loaded from the plugin, and that is
+# not an accident of packaging. bin/fleet-check.sh hashes the files there against the record, and
+# FLEET.md is rendered from what is there. An agent that lived only in the plugin's cache could
+# not be hash-locked, could not carry provenance, and would not appear in the registry at all.
+# Being a governed file in your repository is the point of it.
+#
 # What the suite cannot supply is accountability. Every family in the catalog needs a named human
 # who answers for what those agents produce, and no installer can know who your QA lead is, so it
 # asks. Compatible with bash 3.2.
@@ -94,7 +100,7 @@ say "install the fleet and record its provenance"
 run "mkdir -p .claude/agents .claude/agents-candidates"
 STAMP=$(date -u +%Y%m%dT%H%M%SZ)
 INSTALLER=$(git config user.name 2>/dev/null); INSTALLER=${INSTALLER:-unknown}
-for a in "$PLUGIN"/agents/*.md; do
+for a in "$PLUGIN"/harness/agents/*.md; do
   [ -e "$a" ] || continue
   n=$(basename "$a" .md)
   if [ "$DRY" -eq 1 ]; then echo "forge-install: would install agent $n"; continue; fi
