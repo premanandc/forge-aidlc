@@ -122,11 +122,59 @@ cp -Rf bin/. "$STAGE_PROBE/bin/" 2>/dev/null
   bin/guard.sh --staged >/dev/null; rc=$?
   [ "$rc" -eq 1 ] && echo "guard-selftest: ok    (1) --staged refuses the drafted artifact itself" \
                   || echo "guard-selftest: WRONG --staged allowed the drafted artifact (rc=$rc)"
+  # The other half of the same rule, and the half whose absence let a real bug ship. A rule that
+  # only ever blocks is untested: bin/accept.sh clears the marker when a human accepts and commits
+  # after, so the identical staged set must pass once there is no draft. Without this case the
+  # guard refused every acceptance commit for as long as the harness existed and every check
+  # stayed green, because nothing ever asked the rule to let go.
+  rm -f "work/PF-777/$DRAFT"
+  bin/guard.sh --staged >/dev/null; rc=$?
+  [ "$rc" -eq 0 ] && echo "guard-selftest: ok    (0) --staged passes that same artifact once the marker is cleared" \
+                  || echo "guard-selftest: WRONG --staged still refused the artifact with no marker open (rc=$rc)"
 ) | while IFS= read -r l; do echo "$l"; case "$l" in *WRONG*) echo "$l" >>"$STAGE_PROBE.fail";; esac; done
-[ -f "$STAGE_PROBE.fail" ] && WRONG=$((WRONG+2)) || PASSED=$((PASSED+2))
+[ -f "$STAGE_PROBE.fail" ] && WRONG=$((WRONG+3)) || PASSED=$((PASSED+3))
 rm -f "$STAGE_PROBE.fail"
 git worktree remove --force "$STAGE_PROBE" >/dev/null 2>&1; git worktree prune >/dev/null 2>&1
 rm -rf work/PF-777
+
+echo "=== the Stop hook ends the session's role markers, and only on an allowed stop"
+# A role marker says "a fleet session is running right now". Nothing removed one until the Stop
+# hook did, so every finished session left one behind, and a left-behind .role-implementer blocks
+# the human-approved tests-amend for that ticket, because that rule has no approval escape. These
+# three cases are that lifecycle: cleared when the session ends, scoped to its own ticket, and
+# kept when the stop is refused, because then the session is still running.
+STOP_PROBE=$(mktemp -d "${TMPDIR:-/tmp}/guardstop.XXXXXX"); rmdir "$STOP_PROBE"
+git worktree add -q --detach "$STOP_PROBE" HEAD 2>/dev/null
+cp -Rf bin/. "$STOP_PROBE/bin/" 2>/dev/null
+(
+  cd "$STOP_PROBE" || exit 0
+  export GIT_AUTHOR_NAME=selftest GIT_AUTHOR_EMAIL=selftest@example.com
+  export GIT_COMMITTER_NAME=selftest GIT_COMMITTER_EMAIL=selftest@example.com
+  mkdir -p work/PF-777 work/PF-778
+  echo PF-777 >work/.current-ticket
+  : >work/PF-777/.role-implementer
+  : >work/PF-778/.role-architect
+  echo '{"stop_hook_active":true}' | bin/hooks/stop-chain-check.sh >/dev/null 2>&1
+  [ -f work/PF-777/.role-implementer ] \
+    && echo "guard-selftest: WRONG the Stop hook left the active ticket's role marker behind" \
+    || echo "guard-selftest: ok    (0) the Stop hook clears the active ticket's role markers"
+  [ -f work/PF-778/.role-architect ] \
+    && echo "guard-selftest: ok    (0) and leaves another ticket's role marker alone" \
+    || echo "guard-selftest: WRONG the Stop hook cleared a marker belonging to another ticket"
+  # A refused stop means the session keeps working. Clearing there would let it run on with the
+  # role guard switched off, so the marker must survive exactly the refusal.
+  : >work/PF-777/.role-implementer
+  git commit -q --allow-empty -m "impl: PF-777 an impl with no tests before it"
+  D=$(echo '{"stop_hook_active":false}' | bin/hooks/stop-chain-check.sh | jq -r '.hookSpecificOutput.decision // "none"')
+  if [ "$D" = block ] && [ -f work/PF-777/.role-implementer ]; then
+    echo "guard-selftest: ok    (block) a refused stop keeps the role marker"
+  else
+    echo "guard-selftest: WRONG refused stop: decision=$D, marker kept=$([ -f work/PF-777/.role-implementer ] && echo yes || echo no)"
+  fi
+) | while IFS= read -r l; do echo "$l"; case "$l" in *WRONG*) echo "$l" >>"$STOP_PROBE.fail";; esac; done
+[ -f "$STOP_PROBE.fail" ] && WRONG=$((WRONG+3)) || PASSED=$((PASSED+3))
+rm -f "$STOP_PROBE.fail"
+git worktree remove --force "$STOP_PROBE" >/dev/null 2>&1; git worktree prune >/dev/null 2>&1
 O=$(echo '{"tool_input":{"command":"ls"}}' | bin/hooks/pretooluse-bash.sh); RC=$?
 if [ -z "$O" ] && [ "$RC" -eq 0 ]; then echo "guard-selftest: ok    (0) adapter is silent on an unguarded command"; PASSED=$((PASSED+1))
 else echo "guard-selftest: WRONG adapter spoke on an unguarded command: $O"; WRONG=$((WRONG+1)); fi

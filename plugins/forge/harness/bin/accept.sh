@@ -102,6 +102,25 @@ printf 'accept: type your GitHub login to accept, anything else to abort: '
 read -r ANSWER
 [ "$ANSWER" = "$LOGIN" ] || { unstage; die "aborted; nothing committed (staging undone)"; }
 
+# --- the artifact stops being a draft here, before the commit rather than after ------
+# work/<T>/.drafting-<stage> means "drafted and unaccepted", and the line above is where that
+# stops being true. It used to be removed after the commit, four lines too late: the pre-commit
+# layer refuses any commit carrying a drafted artifact and cannot tell this script from any other
+# caller, so this script was refused by the very rule that names it as the exception. Clearing the
+# marker first makes that rule true by construction. By the time git runs there is no draft, there
+# is an artifact a human accepted.
+#
+# It goes back if anything below fails. A ticket with neither a marker nor an accepted commit is a
+# ticket nothing is guarding, and that is a worse state than the one we started in.
+DRAFTED="$W/.drafting-$STAGE"
+STASH=""
+if [ -f "$DRAFTED" ]; then
+  STASH=${TMPDIR:-/tmp}/accept-$T-$STAGE.$$
+  cp "$DRAFTED" "$STASH" || die "could not set aside $DRAFTED"
+  trap 'if [ -n "${STASH:-}" ] && [ -f "$STASH" ]; then cp "$STASH" "$DRAFTED"; rm -f "$STASH"; echo "accept: $DRAFTED restored; $T is still drafting" >&2; fi' EXIT INT TERM
+  rm -f "$DRAFTED"
+fi
+
 # --- commit, lock, push, PR ---------------------------------------------------------
 TRAILERS=(--trailer "Accepted-By: $NAME ($LOGIN)")
 [ -n "$DEFER" ] && TRAILERS+=(--trailer "Deferred-Questions: $DEFER")
@@ -110,10 +129,12 @@ TRAILERS=(--trailer "Accepted-By: $NAME ($LOGIN)")
 # a pathspec.)
 # shellcheck disable=SC2086
 git commit -q -m "$STAGE: $T $TITLE" "${TRAILERS[@]}" --only -- $FILES || die "commit refused"
+# Committed. The draft is now an accepted artifact in the history, so the marker must not come back.
+trap - EXIT INT TERM
+if [ -n "$STASH" ]; then rm -f "$STASH"; STASH=""; fi
 SHA=$(git rev-parse --short HEAD)
 echo "accept: committed $SHA  $STAGE: $T $TITLE  (Accepted-By: $NAME ($LOGIN))"
 if [ "$STAGE" = tests ]; then touch "$W/.tests-locked"; echo "accept: tests locked ($W/.tests-locked); src/test is frozen for $T until evidence:"; fi
-rm -f "$W/.drafting-$STAGE"
 mkdir -p work; echo "$T" >|work/.current-ticket
 
 if git remote get-url origin >/dev/null 2>&1; then

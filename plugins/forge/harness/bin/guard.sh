@@ -173,7 +173,7 @@ case "$MODE" in
     # still being drafted. Anything else may commit, whatever else is open elsewhere.
     for dt in $(drafting_tickets); do
       if echo "$staged" | grep -Eq "^work/$dt/|^src/test/"; then
-        block "this commit carries $dt's work while $(ls "work/$dt"/.drafting-* 2>/dev/null | paste -sd, -) is open; only bin/accept.sh commits a drafted artifact"
+        block "this commit carries $dt's work while $(ls "work/$dt"/.drafting-* 2>/dev/null | paste -sd, -) is open; bin/accept.sh clears that marker when a human accepts, and commits after"
       fi
     done
     if echo "$staged" | grep -Eq '^(\.forge/policy\.json|work/[^/]+/policy\.json)$' && [ ! -t 0 ]; then

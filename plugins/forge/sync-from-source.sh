@@ -24,9 +24,13 @@ command cp -f "$SRC"/evals/lib/*.sh harness/evals/lib/
 command cp -f "$SRC"/evals/README.md harness/evals/
 command cp -f "$SRC"/.github/workflows/*.yml harness/.github/workflows/
 command cp -Rf "$SRC"/.github/ISSUE_TEMPLATE harness/.github/
-command cp -f "$SRC"/.claude/commands/forge/*.md commands/
 command cp -f "$SRC"/.claude/agents/*.md harness/agents/
 
+# commands/ is not synced. The source repo used to hold the slash commands under
+# .claude/commands/forge/ and they were copied from there; they now live here and the source
+# repo installs this plugin to get them, so copying them back would be copying from a directory
+# that no longer exists. It did exactly that, and set -e made every later step silently not run.
+#
 # forge-install.sh is this plugin's own, not the source repo's: it installs the harness rather
 # than being part of it, so a sync must not delete it.
 [ -f harness/bin/forge-install.sh ] || echo "sync: WARNING harness/bin/forge-install.sh is missing"
