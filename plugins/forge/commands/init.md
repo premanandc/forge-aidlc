@@ -15,7 +15,9 @@ Equip the current repository with the harness. `$ARGUMENTS` may carry `--owner "
 4. Ask for the owner if `--owner` was not given. Every family needs a named human who answers for what its agents produce, one name now covers all six, and the installer refuses to write `UNASSIGNED`. This is the one thing the suite cannot ship, so do not invent a name or reuse the git config without asking.
 5. On confirmation, run it for real without `--dry-run`, then report what the fleet check said.
 
-Then tell the user the three things the installer prints, which are genuinely theirs and cannot be automated: writing the architecture and prohibitions sections of `CLAUDE.md` for this codebase, setting the ticket id pattern and backlog source in `bin/issue.sh`, and adding golden tasks under `evals/` as they learn what their agents get wrong.
+Then tell the user the three things the installer prints, which are genuinely theirs and cannot be automated: writing the architecture and prohibitions sections of `CLAUDE.md` for this codebase, filling in `.forge/project.json` with the ticket id pattern and their module names, and adding golden tasks under `evals/` as they learn what their agents get wrong.
+
+Say which way the line runs, because it is what makes a re-install safe: nothing under `bin/` is theirs to edit and an install replaces all of it, while everything that varies by project lives in `.forge/`, which an install keeps. Until the modules are named, the architect's boundary review is required on every ticket, because an unknown module count fails closed.
 
 **Do not run this without confirmation.** It writes into a repository that is not yours, and installing a harness that refuses commits is something a person should choose deliberately.
 
