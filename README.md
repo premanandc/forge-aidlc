@@ -16,9 +16,9 @@ lands in your repository, is in [plugins/forge/README.md](plugins/forge/README.m
 ## Install
 
 ```
-/plugin marketplace add premanandc/forge-aidlc
-/plugin install forge@forge-aidlc
-/forge:init                 # in the repository you want to equip
+/plugin marketplace add premanandc/forge-aidlc    # register the catalog
+/plugin install forge@forge-aidlc                 # get the tool
+/forge:init                                       # point it at a repository
 ```
 
 Private repository, so installing uses your existing git credentials. If background update checks

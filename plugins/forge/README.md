@@ -11,19 +11,14 @@ its to take, so the harness refuses in four places rather than asking nicely.
 ## Install
 
 ```
-/plugin marketplace add premanandc/forge-aidlc
-/plugin install forge@forge-aidlc
+/plugin marketplace add premanandc/forge-aidlc    # register the catalog
+/plugin install forge@forge-aidlc                 # get the tool
+/forge:init                                       # point it at a repository
 ```
 
-Then, in the repository you want to equip:
-
-```
-/forge:init
-```
-
-That vendors the scripts, the git hook, the templates, the workflows and the default policy into
-the project, installs the six agents into `.claude/agents/`, and records where each came from. It
-asks who owns each agent family and refuses to proceed without an answer.
+The last one vendors the scripts, the git hook, the templates, the workflows and the default
+policy into the project, installs the six agents into `.claude/agents/`, and records where each
+came from. It asks who owns each agent family and refuses to proceed without an answer.
 
 To try it before installing:
 
