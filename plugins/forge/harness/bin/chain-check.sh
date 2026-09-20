@@ -138,7 +138,11 @@ if [ -n "$TESTS" ]; then
   end=${EVIDENCE:-HEAD}
   lock_ok=1
   for c in $(git rev-list --reverse "$TESTS".."$end"); do
-    if git diff-tree --no-commit-id --name-only -r "$c" | grep -q '^src/test/'; then
+    # No -q: it exits on the first match, diff-tree dies writing into a closed pipe, and under
+    # pipefail the pipeline reports 141. The fallback answer would be "this commit touched no
+    # tests", so the lock would wave through exactly the commit it exists to catch. See the note
+    # above about readers that stop early; bin/accept.sh carried the same bug at a later gate.
+    if git diff-tree --no-commit-id --name-only -r "$c" | grep '^src/test/' >/dev/null; then
       subj=$(git log -1 --format='%s' "$c")
       if ! echo "$subj" | grep -Eq "^tests-amend:[[:space:]]*${TICKET}([^A-Za-z0-9-]|$)"; then
         fail "test lock: $(git log -1 --format='%h' "$c") touches src/test after tests: without a tests-amend: commit ($subj)"

@@ -291,8 +291,12 @@ PY
   refusal_re="rate.?limit|usage limit|overloaded|quota|not logged in|authentication_error|invalid_api_key|invalid api key|credit balance|Connection error|ECONNRESET"
   if grep -qiE "$refusal_re" "$out/claude.stderr" 2>/dev/null; then return 75; fi
   if [ ! -s "$out/claude.json" ]; then return 75; fi
+  # No -q on the second grep: a model result can be long, and -q exits on the first match, leaving
+  # jq writing into a closed pipe. Under pipefail the pipeline then reports 141 and the run reads
+  # as "not a refusal", so a rate-limited or unauthenticated run would be scored against the
+  # candidate instead of reported. A refusal must never cost an agent its admission.
   if [ "$(jq -r '.is_error // false' "$out/claude.json" 2>/dev/null)" = "true" ] \
-     && jq -r '.result // ""' "$out/claude.json" 2>/dev/null | grep -qiE "$refusal_re"; then
+     && jq -r '.result // ""' "$out/claude.json" 2>/dev/null | grep -iE "$refusal_re" >/dev/null; then
     return 75
   fi
   [ "$rc" -ne 0 ] && echo "admit: claude exited $rc (assertions still decide)" >>"$out/claude.stderr"

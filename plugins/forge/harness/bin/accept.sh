@@ -42,7 +42,12 @@ if [ "$CUR" != "$BRANCH" ]; then
     die "on branch $CUR; the chain for $T lives on $BRANCH (git switch $BRANCH)"
   fi
 fi
-has_commit() { git log --format=%s | grep -Eq "^$1:[[:space:]]*$T([^A-Za-z0-9-]|$)"; }
+# No -q, deliberately. `grep -q` exits on its first match, git keeps writing into a closed pipe and
+# dies with SIGPIPE, and under `pipefail` the pipeline reports 141 rather than 0: a commit that is
+# plainly there reads as absent. It only bites when the commit exists, so the intent gate, where
+# this is expected to find nothing, passed while every later gate refused. Same bug as the one
+# bin/chain-check.sh carries a comment about; a reader that stops early is the shape to avoid.
+has_commit() { git log --format=%s | grep -E "^$1:[[:space:]]*$T([^A-Za-z0-9-]|$)" >/dev/null; }
 case "$STAGE" in
   intent) has_commit intent && die "intent: $T is already committed";;
   spec)   has_commit intent || die "no intent: commit for $T yet; accept intent first"
