@@ -98,6 +98,16 @@ else
   say "install .forge/fleet-catalog.json"
   run "cp '$PLUGIN'/harness/.forge/fleet-catalog.json .forge/"
 fi
+# The facts about the project being equipped: ticket id pattern, backlog source, chain order,
+# module names. They used to be edited into bin/ at five places marked "# template:", which made
+# this install a silent overwrite of work somebody had done. Keeping them here is what lets the
+# step above replace every script without asking: nothing in bin/ is yours to keep.
+if [ -f .forge/project.json ]; then
+  say "keep the existing .forge/project.json"
+else
+  say "install .forge/project.json (ticket pattern, chain order, module names)"
+  run "cp '$PLUGIN'/harness/.forge/project.json .forge/"
+fi
 
 # --- 3. accountability, which the suite cannot ship ---------------------------------
 if [ "$DRY" -eq 0 ] && grep -q 'UNASSIGNED' .forge/fleet-catalog.json 2>/dev/null; then
@@ -141,6 +151,11 @@ fi
 echo
 echo "forge-install: done. Still yours to do:"
 echo "  1. Write the architecture and prohibitions sections of CLAUDE.md for this codebase."
-echo "  2. Set the ticket id pattern and backlog source in bin/issue.sh (look for '# template:')."
+echo "  2. Fill in .forge/project.json: the ticket id pattern, the backlog source if you have one,"
+echo "     and your module names. Until the modules are named the architect's boundary review is"
+echo "     required on every ticket, because an unknown module count fails closed."
 echo "  3. Add golden tasks under evals/<agent>/ as you learn what your agents get wrong,"
 echo "     then bin/admit.sh <agent> to earn a local score instead of the suite's."
+echo
+echo "forge-install: nothing under bin/ is yours to edit. It is replaced wholesale on the next"
+echo "forge-install: install; everything that varies by project lives in .forge/, which is kept."

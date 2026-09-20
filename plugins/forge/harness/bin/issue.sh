@@ -36,13 +36,21 @@
 # Compatible with bash 3.2.
 set -uo pipefail
 ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd); cd "$ROOT"
-TICKET_RE='PF-[0-9]+'                                  # template: ticket id pattern
-BRIEF=docs/forge-provider-functional-brief.md          # template: backlog table source
 MARKER='<!-- forge:chain -->'
+PROJECT=.forge/project.json
 CMD=${1:-}; shift || true
 die() { echo "issue: $*" >&2; exit 1; }
 command -v gh >/dev/null 2>&1 || die "gh is not installed"
 command -v jq >/dev/null 2>&1 || die "jq is not installed"
+
+# How a ticket id looks and where the backlog table lives are facts about this codebase, not about
+# the harness, so they are read rather than edited in. bin/ is vendor code: re-installing the suite
+# replaces every script in it, and anything tuned in here would go without a word. Fail closed and
+# name the file, because a guessed ticket pattern would silently match the wrong issues.
+[ -f "$PROJECT" ] || die "$PROJECT is missing; it holds this project's ticket pattern and backlog source"
+TICKET_RE=$(jq -r '.ticket.pattern // empty' "$PROJECT")
+BRIEF=$(jq -r '.ticket.backlogSource // empty' "$PROJECT")
+[ -n "$TICKET_RE" ] || die "$PROJECT has no .ticket.pattern"
 
 all_issues() { gh issue list --state all --label ticket --limit 200 --json number,title,url,state,body,labels,createdAt; }
 issue_json() {  # $1 = ticket ; the issue object or nothing
@@ -328,11 +336,15 @@ Chain: \`/forge:intent $T\` → accept → \`/forge:spec $T\` → accept → \`/
 Chain: \`/forge:intent $id\` → accept → \`/forge:spec $id\` → accept → \`/forge:tests $id\` → accept → \`bin/ticket.sh $id\` → review the PR → merge to release."
       url=$(gh issue create --title "$id: $story" --body "$body" --label "ticket,risk:$risk,stage:filed" 2>&1) || { echo "issue: create failed for $id: $url"; continue; }
       echo "issue: created $id ($risk) $url"
-      if [ "$id" = "PF-101" ]; then   # template: shipped before the backlog moved to Issues
+      # A ticket that shipped before the backlog moved to Issues is filed and then closed with the
+      # note that says so, rather than left looking like open work. Which tickets those are, and
+      # what each note says, are facts about this project and live in .forge/project.json.
+      note=$(jq -r --arg id "$id" '.ticket.alreadyReleased[$id] // empty' "$PROJECT")
+      if [ -n "$note" ]; then
         n=${url##*/}
-        gh issue comment "$n" --body "Shipped through the Phase 5 chain on main before the backlog moved to Issues; see work/PF-101/ and metrics/runs.jsonl. Grandfathered from the acceptance gates in work/PF-101/policy.json." >/dev/null
+        gh issue comment "$n" --body "$note" >/dev/null
         gh issue edit "$n" --remove-label "stage:filed" --add-label "stage:released" >/dev/null
-        gh issue close "$n" --reason completed >/dev/null && echo "issue: closed $id as completed"
+        gh issue close "$n" --reason completed >/dev/null && echo "issue: closed $id as already released"
       fi
     done
     ;;

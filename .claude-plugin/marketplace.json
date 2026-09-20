@@ -10,7 +10,7 @@
       "name": "forge",
       "source": "./plugins/forge",
       "description": "An AI-first delivery harness: six narrow agents, three human acceptance gates before any code, and deterministic gates after it. Requirements are settled by people; the rest is checked by machines.",
-      "version": "0.1.4",
+      "version": "0.1.5",
       "author": {
         "name": "Premanand Chandrasekaran"
       },

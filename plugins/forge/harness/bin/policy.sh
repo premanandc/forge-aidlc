@@ -52,8 +52,16 @@ case "$KEY" in
     v=$(get '.architectureReview')
     if [ "$v" = by-risk ] && [ -f "work/$T/spec.md" ]; then
       contract=$(awk '/^## Contract/{f=1; next} /^## /{f=0} f' "work/$T/spec.md")
-      # template: module names of this codebase; the copier template renders them from its answers
-      mods=$(printf '%s' "$contract" | grep -oE 'enrollment|screening|decision|registry|correspondence' | sort -u | wc -l | tr -d ' ')
+      # Which names count as modules is a fact about this codebase, so it lives in
+      # .forge/project.json rather than in this script. Missing or empty, the count cannot be
+      # trusted and the review resolves required: the policy fails closed, and a configuration
+      # gap must not be the thing that quietly waives a boundary review.
+      MODULE_RE=$(jq -r '(.modules // []) | join("|")' .forge/project.json 2>/dev/null)
+      if [ -z "$MODULE_RE" ]; then
+        echo "policy: .forge/project.json has no .modules; resolving architectureReview to required" >&2
+        echo required; exit 0
+      fi
+      mods=$(printf '%s' "$contract" | grep -oE "$MODULE_RE" | sort -u | wc -l | tr -d ' ')
       if printf '%s' "$contract" | grep -qE 'shared\.events|ForgeEvent|allowedDependencies' || [ "$mods" -ge 2 ]; then
         echo required; exit 0
       fi

@@ -44,16 +44,20 @@ the agent's golden tasks:
 |---|---|---|---|---|---|---|---|
 AGENTS
 # Chain order, not alphabetical: the registry should show how the work moves, not who exists.
-# The order lives here rather than in the catalog because it is a rendering choice, not a fact
-# about accountability. The catalog records who owns an agent and what it is for, and it is
-# human-written; the guards refuse it to an agent session, which is how this ended up here.
-# An agent not named below sorts last rather than disappearing.
-chain_order() {  # template: the stages of this project's chain, in order
-  case "$1" in
-    intent-drafter) echo 1;; spec-drafter) echo 2;; architect) echo 3;;
-    test-designer) echo 4;; implementer) echo 5;; release-manager) echo 6;;
-    *) echo 99;;
-  esac
+# It is a rendering choice rather than a fact about accountability, so it is not in the fleet
+# catalog; it is a fact about this project rather than about the harness, so it is not in this
+# script either. It lives in .forge/project.json with the other project facts, which is also what
+# keeps it when the suite is re-installed over bin/.
+# An agent not named there sorts last rather than disappearing.
+CHAIN_ORDER=$(jq -r '(.chainOrder // []) | join(" ")' .forge/project.json 2>/dev/null)
+[ -n "$CHAIN_ORDER" ] || { echo "fleet-render: .forge/project.json has no .chainOrder; cannot order the registry" >&2; exit 1; }
+chain_order() {  # $1 = agent name ; its position in this project's chain, or 99
+  local n=1 a
+  for a in $CHAIN_ORDER; do
+    [ "$a" = "$1" ] && { echo "$n"; return; }
+    n=$((n+1))
+  done
+  echo 99
 }
 for a in $(for f in .claude/agents/*.md; do
              [ -e "$f" ] || continue

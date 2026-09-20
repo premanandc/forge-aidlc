@@ -198,9 +198,19 @@ need is copied into your project, and that is deliberate rather than clumsy:
   only exists while an agent session is running enforces nothing.
 - **`.claude/agents/`**, the six definitions. The fleet check hashes these files against the
   record, so an agent living only in a plugin cache could not be hash-locked or carry provenance.
-- **`.forge/policy.json`** and the fleet catalog, both human-written and refused to agent sessions.
+- **`.forge/`**, human-written and refused to agent sessions: `policy.json` for which gates this
+  repo requires, the fleet catalog for who owns which agents, and `project.json` for the facts
+  about your codebase.
 - **`FLEET.md`** and **`evals/admissions.log`**, which are your repository's record of which
   agents you trust and why.
+
+**The line between those two kinds of file is the one that matters.** Everything in `bin/` is
+vendor code: you never need to read it, and an install replaces all of it without asking.
+Everything that varies by project lives in `.forge/`, which an install keeps. Ticket id pattern,
+backlog source, the order agents appear in the registry and your module names are configuration,
+so they are read from `.forge/project.json` rather than edited into the scripts. Earlier versions
+had five such values sitting in `bin/` behind `# template:` comments, which meant re-installing
+silently threw away work somebody had done.
 
 ## Two things worth knowing before you install
 
@@ -219,5 +229,7 @@ for what its agents produce, and no installer can know who your QA lead is. It a
 Three things are genuinely yours and cannot be automated:
 
 1. Write the architecture and prohibitions sections of `CLAUDE.md` for your codebase.
-2. Set the ticket id pattern and backlog source in `bin/issue.sh` (search for `# template:`).
+2. Fill in `.forge/project.json`: the ticket id pattern, the backlog source if you have one, and
+   your module names. Until the modules are named the architect's boundary review is required on
+   every ticket, because an unknown module count fails closed.
 3. Add golden tasks under `evals/` as you learn what your agents get wrong.

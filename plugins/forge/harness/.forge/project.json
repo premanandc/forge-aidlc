@@ -1,0 +1,27 @@
+{
+  "_": "Project configuration for the Forge harness: facts about YOUR codebase, not about the harness. These used to be edited into bin/ at five places marked '# template:', which meant re-installing the suite silently replaced them. They live here so bin/ is vendor code nobody has to touch: an install replaces every script and leaves this file alone. Human-written, outside a ticket; the guards refuse .forge/ to an agent session.",
+
+  "ticket": {
+    "pattern": "[A-Z]+-[0-9]+",
+    "_pattern": "How a ticket id looks in an issue title, as an extended regular expression. The default matches the usual tracker shapes (ABC-123). Narrow it to your own prefix if issues in this repo use more than one.",
+
+    "backlogSource": "",
+    "_backlogSource": "Optional. A document holding a backlog table for 'bin/issue.sh seed' to file from, cited in each issue body. Leave empty if you file issues by hand or with 'bin/issue.sh new'.",
+
+    "alreadyReleased": {},
+    "_alreadyReleased": "Optional. Ticket id to note, for work that shipped before the backlog moved to Issues. Seeding files each one, posts the note, labels it stage:released and closes it, rather than leaving it looking like open work."
+  },
+
+  "chainOrder": [
+    "intent-drafter",
+    "spec-drafter",
+    "architect",
+    "test-designer",
+    "implementer",
+    "release-manager"
+  ],
+  "_chainOrder": "The order a ticket meets the fleet, used to sort FLEET.md so the registry reads top to bottom as a ticket's life. Add your own agents where they belong; one not named here sorts last rather than disappearing.",
+
+  "modules": [],
+  "_modules": "Module, package or service names that bin/policy.sh counts in a spec's Contract section: naming more than one of them makes the architect's boundary review required under a by-risk policy. Empty means the count cannot be trusted, so the review resolves to required on every ticket. That is the safe default and the reason to fill this in. Leave out any name that appears in nearly every Contract, such as a shared kernel, or the count will mean nothing."
+}
