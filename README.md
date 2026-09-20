@@ -18,7 +18,7 @@ lands in your repository, is in [plugins/forge/README.md](plugins/forge/README.m
 ```
 /plugin marketplace add premanandc/forge-aidlc
 /plugin install forge@forge-aidlc
-/forge:install                 # in the repository you want to equip
+/forge:init                 # in the repository you want to equip
 ```
 
 Private repository, so installing uses your existing git credentials. If background update checks

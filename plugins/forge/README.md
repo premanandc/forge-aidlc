@@ -18,7 +18,7 @@ its to take, so the harness refuses in four places rather than asking nicely.
 Then, in the repository you want to equip:
 
 ```
-/forge:install
+/forge:init
 ```
 
 That vendors the scripts, the git hook, the templates, the workflows and the default policy into
@@ -74,7 +74,7 @@ gh pr merge <N> --merge --subject "release: PF-103 ..."                   # YOU 
 | command | does |
 |---|---|
 | `/forge:admit <agent>` | prepare an agent's admission and hand the decision to you |
-| `/forge:install` | equip a repository with the harness |
+| `/forge:init` | equip a repository with the harness |
 
 **Two things deliberately have no command.** Accepting an artifact is `bin/accept.sh`, which
 refuses to run without a terminal and records your GitHub login in a commit trailer. Merging the

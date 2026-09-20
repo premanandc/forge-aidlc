@@ -1,5 +1,5 @@
 ---
-description: Install the Forge harness into this repository: vendor the scripts, seed the policy and fleet, and record where the agents came from.
+description: Equip this repository with the Forge harness: vendor the scripts, seed the policy and fleet, and record where the agents came from.
 ---
 
 Equip the current repository with the harness. `$ARGUMENTS` may carry `--owner "Name (login)"`.
