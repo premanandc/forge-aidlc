@@ -18,6 +18,13 @@ cd "$ROOT" || exit 0
 # session carrying on without its own role marker would have run with its guard switched off.
 # Scoped to the active ticket: markers belong to the ticket whose chain this session is in.
 clear_role_markers() {
+  # Not during an admission. A golden task's assertions run after the session and read what it
+  # left behind, and a role marker is how they check the agent announced its role at all. Clearing
+  # it here deletes the evidence the run exists to produce, which failed every agent's admission
+  # until this line: bin/admit.sh writes work/.current-ticket into its worktree, so this hook found
+  # a ticket and tidied up after a session whose whole purpose was to be inspected. Nothing can go
+  # stale as a result, because the worktree is thrown away when the task ends.
+  [ "${FORGE_EVAL:-}" = "1" ] && return 0
   [ -f work/.current-ticket ] || return 0
   local t; t=$(tr -d '[:space:]' < work/.current-ticket)
   [ -n "$t" ] && [ -d "work/$t" ] || return 0

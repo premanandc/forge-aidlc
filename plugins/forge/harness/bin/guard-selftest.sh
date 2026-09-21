@@ -184,6 +184,16 @@ cp -Rf bin/. "$STOP_PROBE/bin/" 2>/dev/null
   [ -f work/PF-778/.role-architect ] \
     && echo "guard-selftest: ok    (0) and leaves another ticket's role marker alone" \
     || echo "guard-selftest: WRONG the Stop hook cleared a marker belonging to another ticket"
+  # An admission's assertions read what the session left behind, and a role marker is how they
+  # check the agent announced its role. Clearing it there deletes the evidence the run exists to
+  # produce, which is exactly what happened: every agent's admission failed on a missing marker
+  # until bin/admit.sh started saying FORGE_EVAL=1.
+  : >work/PF-777/.role-implementer
+  FORGE_EVAL=1 sh -c 'echo "{\"stop_hook_active\":true}" | bin/hooks/stop-chain-check.sh' >/dev/null 2>&1
+  [ -f work/PF-777/.role-implementer ] \
+    && echo "guard-selftest: ok    (0) an admission's role markers survive the Stop hook" \
+    || echo "guard-selftest: WRONG the Stop hook cleared a marker an eval's assertions need"
+
   # A refused stop means the session keeps working. Clearing there would let it run on with the
   # role guard switched off, so the marker must survive exactly the refusal.
   : >work/PF-777/.role-implementer
@@ -195,7 +205,7 @@ cp -Rf bin/. "$STOP_PROBE/bin/" 2>/dev/null
     echo "guard-selftest: WRONG refused stop: decision=$D, marker kept=$([ -f work/PF-777/.role-implementer ] && echo yes || echo no)"
   fi
 ) | while IFS= read -r l; do echo "$l"; case "$l" in *WRONG*) echo "$l" >>"$STOP_PROBE.fail";; esac; done
-[ -f "$STOP_PROBE.fail" ] && WRONG=$((WRONG+3)) || PASSED=$((PASSED+3))
+[ -f "$STOP_PROBE.fail" ] && WRONG=$((WRONG+4)) || PASSED=$((PASSED+4))
 rm -f "$STOP_PROBE.fail"
 git worktree remove --force "$STOP_PROBE" >/dev/null 2>&1; git worktree prune >/dev/null 2>&1
 echo "=== the branch decides whether you are inside a ticket, not the pointer file"

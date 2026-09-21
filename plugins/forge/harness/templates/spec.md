@@ -9,6 +9,18 @@ Numbered. Each one observable and testable, one behaviour each, with example val
 happy path, every failure path, and what must stay unchanged.
 1. Given ..., when ..., then ...
 
+## Cross-functional criteria
+The requirements that are not about what it computes. Named prompts, because a blank invitation
+to "consider non-functional concerns" is always answered with silence. Each one gets a numbered,
+testable criterion or the words `not applicable, because ...` so a thin answer is visible rather
+than absent:
+- **Latency and load**: what the change puts on a request path, and what is acceptable.
+- **Authorisation**: who may do the new thing, and who may not.
+- **Auditability**: what must be recorded about who changed what, and when.
+- **Operability**: how an operator sees the new failure modes. A fallback that hides a
+  misconfiguration needs something that says so.
+- **Data**: retention, migration of what already exists, and what happens to it on rollback.
+
 ## Contract
 Drafted by the architect. The surface tests may compile against, nothing more:
 - Module: one of enrollment, screening, decision, registry, correspondence, shared.

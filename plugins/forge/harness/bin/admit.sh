@@ -260,6 +260,9 @@ run_candidate() {
   ALLOWED_TOOLS=""; DISALLOWED_TOOLS=""
   [ -f "$ROOT/$EVALS/policy.sh" ] && . "$ROOT/$EVALS/policy.sh"
   (
+    # The Stop hook clears a session's role markers when it ends, which is right in a real
+    # chain and wrong here: the assertions below read them. Say plainly that this is an eval.
+    export FORGE_EVAL=1
     cd "$wt" && claude -p "$prompt" \
       --agents "$agents_json" --agent "$AGENT" \
       --output-format json \
